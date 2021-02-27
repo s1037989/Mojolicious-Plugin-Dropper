@@ -1,6 +1,7 @@
 package Mojolicious::Plugin::Dropper;
 use Mojo::Base 'Mojolicious::Plugin', -signatures;
 
+use Mojo::Collection qw(c);
 use Mojo::File qw(curfile path tempdir tempfile);
 use Mojo::Util qw(decamelize getopt);
 
@@ -11,7 +12,9 @@ use List::MoreUtils 'uniq';
 # transfer, allow extremely large files;
 use constant MAX_SIZE => $ENV{DROPPER_MAXSIZE} || 10_000_000_000;
 
-has [qw(app qrcodes)];
+has 'app';
+has cleanup => 1;
+has qrcodes => 0;
 
 has [qw(_downloader _paster _uploader)];
 has '_index' => sub { [] };
@@ -29,11 +32,12 @@ sub register ($self, $app, $config) {
 
   $app->max_request_size(MAX_SIZE);
 
+  $self->cleanup($config->{cleanup});
   $self->qrcodes($config->{qrcodes});
 
-  $self->downloader($config->{paths}, $config->{default});
   $self->uploader($config->{uploads}) if defined $config->{uploads};
   $self->paster($config->{pastes}) if defined $config->{pastes};
+  $self->downloader($config->{paths}, $config->{default});
   $self->dropper;
   return $self;
 }
@@ -57,7 +61,6 @@ sub downloader ($self, $paths=[], $default='') {
 
   # Build an index of the available specified files
   my @files = $app->file_index;
-  $app->log->info(sprintf '%d files', scalar @files);
   my $r;
   if ( $default ) {
     $app->log->info("downloader index $default");
@@ -78,19 +81,23 @@ sub downloader ($self, $paths=[], $default='') {
 
 sub paster ($self, $pastes) {
   my $app = $self->app;
-  $pastes ||= tempdir(CLEANUP => 1) if !$pastes;
+  $pastes ||= tempdir(CLEANUP => $self->cleanup) if !$pastes;
   $pastes = path($pastes) if !ref $pastes;
   push @{$app->static->paths}, $pastes;
-  my $r = $app->routes->get('/dropper/paster')->name('paster');
+  $pastes = $pastes->child('pastes')->make_path;
+  $app->log->info("pastes to $pastes");
+  my $r = $app->routes->get('/dropper/paster')->to(qrcodes => $self->qrcodes)->name('paster');
   $app->routes->post('/dropper/paste' => sub ($c) {
+    my $save;
     my $url;
     if ( my $paste = $c->param('paste') ) {
-      my $save = tempfile(DIR => $pastes, UNLINK => 0)->spurt($paste);
+      $save = tempfile(DIR => $pastes, UNLINK => 0)->spurt($paste);
       $c->log->info("paste $save");
+      $self->_index->[0] = 0;
       $url = $c->url_for($save) if $self->qrcodes;
       $url = "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=$url" if $url;
     }
-    $c->render(json => {ok => 1, url => $url});
+    $c->render(json => {ok => 1, url => $url, filename => $save->basename});
   })->name('paste');
   $app->log->info(sprintf 'paster URL: %s', $r->to_string);
   $self->_paster('paster');
@@ -98,22 +105,24 @@ sub paster ($self, $pastes) {
 
 sub uploader ($self, $uploads) {
   my $app = $self->app;
-  $uploads ||= tempdir(CLEANUP => 1) if !$uploads;
+  $uploads ||= tempdir(CLEANUP => $self->cleanup) if !$uploads;
   $uploads = path($uploads) if !ref $uploads;
   push @{$app->static->paths}, $uploads;
+  $uploads = $uploads->child('uploads')->make_path;
   $app->log->info("uploads to $uploads");
   my $r = $app->routes->get('/dropper/uploader')->to(qrcodes => $self->qrcodes)->name('uploader');
   $app->routes->post('/dropper/upload' => sub ($c) {
+    my $save;
     my $url;
     if ( my $file = $c->req->upload('file') ) {
-      my $save = $uploads->child($file->filename);
+      $save = $uploads->child($file->filename);
       $file->move_to($save);
       $c->log->info("upload $save");
       $self->_index->[0] = 0;
       $url = $c->url_for($save->basename)->to_abs if $c->param('qrcodes');
       $url = "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=$url" if $url;
     }
-    $c->render(json => {ok => 1, url => $url});
+    $c->render(json => {ok => 1, url => $url, filename => $save->basename});
   })->name('upload');
   $app->log->info(sprintf 'uploader URL: %s', $r->to_string);
   $self->_uploader('uploader');
@@ -122,19 +131,25 @@ sub uploader ($self, $uploads) {
 sub _file_index ($self) {
   my ($time, $files) = $self->_index->@*;
   $time ||= 0;
-  return @$files if time - $time < 60;
+  $self->app->log->info(sprintf 'Cached: %d files', scalar @$files) and return @$files if time - $time < 60;
   $files = [];
-  foreach my $path ( uniq map { path($_) } grep { $_ && -e $_ } ($self->app->static->paths->@[1, -1]) ) {
-    if ( -d $path ) {
-      $path->list_tree->each(sub{
-        push @$files, $_->to_rel($path);
-      });
-    } else {
-      push @$files, $path;
-    }
-  }
+  c($self->app->static->paths->@*)
+    ->grep(sub{ $_ && -e $_ })
+    ->map(sub { path($_) })
+    ->uniq
+    ->tail(-1)
+    ->each(sub {
+      my $path = $_;
+      if ( -d $path ) {
+        $path->list_tree->each(sub{
+          push @$files, $_->to_rel($path);
+        });
+      } else {
+        push @$files, $path;
+      }
+    });
   $self->_index([time, $files]);
-  return @$files;
+  $self->app->log->info(sprintf 'Fresh: %d files', scalar @$files) and return @$files;
 }
 
 sub _static_paths {

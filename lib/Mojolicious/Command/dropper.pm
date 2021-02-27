@@ -21,15 +21,17 @@ sub run {
     'l|listen=s'   => \my @listen,
     'p|proxy'      => sub { $daemon->reverse_proxy(1) },
     'r|requests=i' => sub { $daemon->max_requests($_[1]) },
+    'C|cleanup'    => \my $cleanup,
     'D|default=s'  => \my $default,
     'P|pastes:s'   => \my $pastes,
-    'Q|qrcodes'  => \my $qrcodes,
+    'Q|qrcodes'    => \my $qrcodes,
     'U|uploads:s'  => \my $uploads
   );
 
   #$app->plugin(Config => {default => {}});
   $app->plugin('Dropper' => {
     paths => [@args],
+    cleanup => $cleanup,
     default => $default,
     pastes  => $pastes,
     qrcodes => $qrcodes,

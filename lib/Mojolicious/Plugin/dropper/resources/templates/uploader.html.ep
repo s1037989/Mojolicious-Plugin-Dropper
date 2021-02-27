@@ -1,8 +1,8 @@
 <html>
 <head>
-%= stylesheet '/dropzone.css'
+%= stylesheet '/dropzone.min.css'
 %= stylesheet '/style.css'
-%= javascript '/dropzone.js'
+%= javascript '/dropzone.min.js'
 </head>
 <body>
 <p><%= link_to 'Dropper' => 'dropper' %></p>
