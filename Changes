@@ -1,0 +1,12 @@
+0.04 2019-11-30
+
+0.03 2019-11-30
+  - Improve documentation
+  - Provide directory index by default
+  - Add support for including plugins from the environment
+
+0.02 2015-12-30
+  - Update for Mojolicious 8.0+
+
+0.01 2015-12-30
+  - Initial release

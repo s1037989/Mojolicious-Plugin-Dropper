@@ -1,0 +1,8 @@
+#!/usr/bin/env perl
+use Mojolicious::Lite;
+
+use lib 'lib';
+
+app->plugin('Dropper' => app->plugin('Config'));
+
+app->start;

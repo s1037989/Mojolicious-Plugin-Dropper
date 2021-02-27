@@ -1,0 +1,14 @@
+<html>
+<head>
+%= stylesheet '/style.css'
+</head>
+<body>
+<p><%= link_to 'Dropper' => 'dropper' %></p>
+<div id="paster">
+%= form_for 'paste' => (method => 'POST') => begin
+  %= text_area 'paste'
+  %= submit_button
+% end
+</div>
+</body>
+</html>

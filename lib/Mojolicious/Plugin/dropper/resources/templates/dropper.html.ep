@@ -1,0 +1,16 @@
+<html>
+<head>
+%= stylesheet '/style.css'
+</head>
+<body>
+<div id="dropper">
+<%= link_to 'Downloader' => $downloader %><br />
+% if ($paster) {
+<%= link_to 'Paster' => $paster %><br />
+% }
+% if ($uploader) {
+<%= link_to 'Uploader' => $uploader %><br />
+% }
+</div>
+</body>
+</html>
