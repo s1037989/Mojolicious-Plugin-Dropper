@@ -7,12 +7,13 @@
 <body>
 <p><%= link_to 'Dropper' => 'dropper' %></p>
 %= form_for 'paste' => (method => 'POST', class => "dropzone", id => "demo-paste") => begin
-%= check_box 'qrcodes', (id => 'qrcodes') if $qrcodes
-%= label_for 'qrcodes' => 'Generate QR Code?' if $qrcodes
 <div id="dropzone">
-  <div class="dz-message">
+  <div>
     %= text_area 'paste'
     %= submit_button
+  </div>
+  <div class="dz-message">
+    Do it
   </div>
 </div>
 % end
@@ -20,47 +21,28 @@
 %= javascript begin
   Dropzone.autoDiscover = false;
   Dropzone.options.demoPaste = {
-    clickable: false,
-    init: function() {
-      this.on("addedfile", function(file, res) {
-        console.log(file, res);
-        //if (res.url) {
-        //  file.previewElement.addEventListener("click", function() {
-        //    document.location.href=res.url;
-        //  });
-        //}
-      });
-    }
+    clickable: false
   };
   let myDropzone = new Dropzone("#demo-paste");
   document.getElementById('demo-paste').addEventListener('submit', function(event){
     event.preventDefault();
-    console.log("submit");
-
-      // configure a request
-      const xhr = new XMLHttpRequest();
-      xhr.open('POST', '/dropper/paste');
-
-      // prepare form data
-      let data = new FormData(document.getElementById('demo-paste'));
-
-      // set headers
-      //xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-      xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-
-      // send request
-      xhr.send(data);
-
-      // listen for `load` event
-      xhr.onload = () => {
-          let res = JSON.parse(xhr.responseText);
-          console.log(res.filename);
-          myDropzone.displayExistingFile({name: res.filename, size: 12345}, 'http://localhost:3000/qrcode.webp', function() {
-            this.addEventListener("click", function() {
-              document.location.href=res.url;
-            });
-          });
-      }
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', '<%= url_for "paste" %>');
+    let data = new FormData(document.getElementById('demo-paste'));
+    xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+    xhr.send(data);
+    xhr.onload = () => {
+      let res = JSON.parse(xhr.responseText);
+      % if ($qrcodes) {
+      myDropzone.displayExistingFile({name: res.filename, size: res.size}, '/qrcode.webp', function() {
+        this.addEventListener("click", function() {
+          document.location.href=res.url;
+        });
+      });
+      % } else {
+      myDropzone.displayExistingFile({name: res.filename, size: res.size}, '/file.png');
+      % }
+    }
   });
 % end
 </html>

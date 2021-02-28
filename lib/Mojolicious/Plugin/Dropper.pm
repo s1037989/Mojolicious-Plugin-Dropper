@@ -37,7 +37,7 @@ sub register ($self, $app, $config) {
 
   $self->uploader($config->{uploads}) if defined $config->{uploads};
   $self->paster($config->{pastes}) if defined $config->{pastes};
-  $self->downloader($config->{paths}, $config->{default});
+  $self->downloader($config->{paths}, $config->{default}) if defined $config->{downloads};
   $self->dropper;
   return $self;
 }
@@ -62,7 +62,7 @@ sub downloader ($self, $paths=[], $default='') {
   # Build an index of the available specified files
   my @files = $app->file_index;
   my $r;
-  if ( $default ) {
+  if ($default) {
     $app->log->info("downloader index $default");
     $r = $app->routes
              ->get('/')
@@ -94,10 +94,10 @@ sub paster ($self, $pastes) {
       $save = tempfile(DIR => $pastes, UNLINK => 0)->spurt($paste);
       $c->log->info("paste $save");
       $self->_index->[0] = 0;
-      $url = $c->url_for($save) if $self->qrcodes;
+      $url = $c->url_for($save->to_rel($pastes->dirname))->to_abs;
       $url = "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=$url" if $url;
     }
-    $c->render(json => {ok => 1, url => $url, filename => $save->basename});
+    $c->render(json => {ok => 1, url => $url, filename => $save->basename, size => $save->stat->size});
   })->name('paste');
   $app->log->info(sprintf 'paster URL: %s', $r->to_string);
   $self->_paster('paster');
@@ -119,7 +119,7 @@ sub uploader ($self, $uploads) {
       $file->move_to($save);
       $c->log->info("upload $save");
       $self->_index->[0] = 0;
-      $url = $c->url_for($save->basename)->to_abs if $c->param('qrcodes');
+      $url = $c->url_for($save->to_rel($uploads->dirname))->to_abs;
       $url = "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=$url" if $url;
     }
     $c->render(json => {ok => 1, url => $url, filename => $save->basename});

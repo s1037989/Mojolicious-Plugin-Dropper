@@ -4,7 +4,9 @@
 </head>
 <body>
 <div id="dropper">
+% if ($downloader) {
 <%= link_to 'Downloader' => $downloader %><br />
+% }
 % if ($paster) {
 <%= link_to 'Paster' => $paster %><br />
 % }
