@@ -15,6 +15,14 @@ use constant MAX_SIZE => $ENV{DROPPER_MAXSIZE} || 10_000_000_000;
 has 'app';
 has cleanup => 1;
 has qrcodes => 0;
+has routes  => sub { state $r = shift->app->routes->under('/' => sub {
+  my $c = shift;
+  return 1 unless $c->app->config->{login};
+  return 1 if defined $c->req->url->to_abs->userinfo && $c->req->url->to_abs->userinfo eq $c->app->config->{login};
+  $c->res->headers->www_authenticate('Basic');
+  $c->render(text => 'authentication failed', status => 401);
+  return undef;
+}) };
 
 has [qw(_downloader _paster _uploader)];
 has '_index' => sub { [] };
@@ -43,8 +51,7 @@ sub register ($self, $app, $config) {
 }
 
 sub dropper ($self) {
-  my $app = $self->app;
-  $app->routes->get('/dropper')->to(
+  $self->routes->get('/dropper')->to(
     downloader => $self->_downloader,
     paster => $self->_paster,
     uploader => $self->_uploader,
@@ -64,16 +71,16 @@ sub downloader ($self, $paths=[], $default='') {
   my $r;
   if ($default) {
     $app->log->info("downloader index $default");
-    $r = $app->routes
-             ->get('/')
-             ->to(qrcodes => $self->qrcodes, cb => sub { shift->reply->static($default) })
-             ->name('downloader');
+    $r = $self->routes
+              ->get('/')
+              ->to(qrcodes => $self->qrcodes, cb => sub { shift->reply->static($default) })
+              ->name('downloader');
   } else {
     $app->log->info('downloader index directory listing');
-    $r = $app->routes
-             ->get('/')
-             ->to(qrcodes => $self->qrcodes)
-             ->name('downloader');
+    $r = $self->routes
+              ->get('/')
+              ->to(qrcodes => $self->qrcodes)
+              ->name('downloader');
   }
   $app->log->info(sprintf 'downloader URL: %s', $r->to_string);
   $self->_downloader('downloader');
@@ -86,8 +93,8 @@ sub paster ($self, $pastes) {
   push @{$app->static->paths}, $pastes;
   $pastes = $pastes->child('pastes')->make_path;
   $app->log->info("pastes to $pastes");
-  my $r = $app->routes->get('/dropper/paster')->to(qrcodes => $self->qrcodes)->name('paster');
-  $app->routes->post('/dropper/paste' => sub ($c) {
+  my $r = $self->routes->get('/dropper/paster')->to(qrcodes => $self->qrcodes)->name('paster');
+  $self->routes->post('/dropper/paste' => sub ($c) {
     my $save;
     my $url;
     if ( my $paste = $c->param('paste') ) {
@@ -110,8 +117,8 @@ sub uploader ($self, $uploads) {
   push @{$app->static->paths}, $uploads;
   $uploads = $uploads->child('uploads')->make_path;
   $app->log->info("uploads to $uploads");
-  my $r = $app->routes->get('/dropper/uploader')->to(qrcodes => $self->qrcodes)->name('uploader');
-  $app->routes->post('/dropper/upload' => sub ($c) {
+  my $r = $self->routes->get('/dropper/uploader')->to(qrcodes => $self->qrcodes)->name('uploader');
+  $self->routes->post('/dropper/upload' => sub ($c) {
     my $save;
     my $url;
     if ( my $file = $c->req->upload('file') ) {
