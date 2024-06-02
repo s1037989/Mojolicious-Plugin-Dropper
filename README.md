@@ -1,5 +1,5 @@
 
-# Mojolicious::Command::static
+# Mojolicious::Plugin::Dropper
 
   Run a quick and dirty static files web server
 
