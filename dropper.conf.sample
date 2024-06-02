@@ -1,4 +1,5 @@
 {
+  #login => 'username:password',
   cleanup => 0,
   paths => ['t'],
   qrcodes => 1,

@@ -101,6 +101,14 @@ sub register ($self, $app, $config) {
   return $self;
 }
 
+sub dropper ($self) {
+  $self->routes->get('/dropper')->to(
+    downloader => $self->_downloader,
+    paster => $self->_paster,
+    uploader => $self->_uploader,
+  );
+}
+
 sub downloader ($self, $r) {
   my $app = $self->app;
 
