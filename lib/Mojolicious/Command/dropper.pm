@@ -30,12 +30,12 @@ sub run {
 
   #$app->plugin(Config => {default => {}});
   $app->plugin('Dropper' => {
-    paths => [@args],
-    cleanup => $cleanup,
-    default => $default,
-    pastes  => $pastes,
-    qrcodes => $qrcodes,
-    uploads => $uploads,
+    cleanup   => $cleanup,
+    default   => $default,
+    pastes    => {Dropper => $pastes},
+    qrcodes   => {Dropper => $qrcodes},
+    uploads   => {Dropper => $uploads},
+    downloads => {Dropper => $uploads, '' => [@args]},
   });
 
   $daemon->listen(\@listen) if @listen;

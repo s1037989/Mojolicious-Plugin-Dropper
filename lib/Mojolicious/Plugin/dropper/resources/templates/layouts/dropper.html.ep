@@ -1,0 +1,33 @@
+% my $link_to = begin
+  % my ($title, $route) = @_;
+  % my $class = current_route eq $route ? 'gs' : '';
+  % if ($zone->{$route} // 1) {
+  <%= link_to $title => $route => (class => $class) %><br />
+  % }
+% end
+
+<html>
+  <head>
+    % my ($dropzone) = (current_route =~ /^(uploader|paster)$/);
+    % if ($dropzone) {
+    %= stylesheet '/dropzone.min.css'
+    % }
+    %= stylesheet '/style.css'
+    % if ($dropzone) {
+    %= javascript '/dropzone.min.js'
+    % }
+    %= content 'head'
+  </head>
+  <body>
+    <p><%= link_to "Dropper" => 'dropper' %></p>
+    % if ($zonename) {
+    <h1><%= $zonename %></h1>
+    <%= $link_to->(Downloader => 'downloader') %>
+    <%= $link_to->(Uploader => 'uploader') %>
+    <%= $link_to->(Paster => 'paster') %>
+    % }
+    <br />
+    %= content
+  </body>
+  %= content 'post_body'
+</html>

@@ -1,11 +1,3 @@
-<html>
-<head>
-%= stylesheet '/dropzone.min.css'
-%= stylesheet '/style.css'
-%= javascript '/dropzone.min.js'
-</head>
-<body>
-<p><%= link_to 'Dropper' => 'dropper' %></p>
 %= form_for 'paste' => (method => 'POST', class => "dropzone", id => "demo-paste") => begin
 <div id="dropzone">
   <div>
@@ -17,7 +9,20 @@
   </div>
 </div>
 % end
-</body>
+
+<div id="paster">
+<p>List of <%= $files->size %> pastes</p>
+% foreach (sort @$files) {
+  <%= link_to $_ => 'paster' => {zonename => $zonename, file => $_} %>
+  % if ($zone->{qrcodes} // 1) {
+  % my $url = Mojo::URL->new("https://api.qrserver.com/v1/create-qr-code/?size=150x150")->query([data => url_for('paster' => {zonename => $zonename, file => $_})->to_abs]);
+  <%= link_to $url => begin %><%= image '/qrcode.webp', (height=>16, width=>16) %><% end %>
+  % }
+  <br />
+% }
+</div>
+
+% content_for 'post_body' => begin
 %= javascript begin
   Dropzone.autoDiscover = false;
   Dropzone.options.demoPaste = {
@@ -33,7 +38,7 @@
     xhr.send(data);
     xhr.onload = () => {
       let res = JSON.parse(xhr.responseText);
-      % if ($qrcodes) {
+      % if ($zone->{qrcodes} // 1) {
       myDropzone.displayExistingFile({name: res.filename, size: res.size}, '/qrcode.webp', function() {
         this.addEventListener("click", function() {
           document.location.href=res.url;
@@ -45,4 +50,4 @@
     }
   });
 % end
-</html>
+% end

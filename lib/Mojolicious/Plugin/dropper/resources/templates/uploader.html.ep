@@ -1,11 +1,3 @@
-<html>
-<head>
-%= stylesheet '/dropzone.min.css'
-%= stylesheet '/style.css'
-%= javascript '/dropzone.min.js'
-</head>
-<body>
-<p><%= link_to 'Dropper' => 'dropper' %></p>
 %= form_for 'upload' => (method => 'POST', class => "dropzone needsclick dz-clickable", id => "demo-upload") => begin
 <div id="dropzone">
   <div>
@@ -15,20 +7,16 @@
   </div>
 </div>
 % end
-</body>
-%= javascript begin
-  Dropzone.options.demoUpload = {
-    init: function() {
-      this.on("success", function(file, res) {
-        if (res.url) {
-          % if ($qrcodes) {
-          file.previewElement.addEventListener("click", function() {
-            document.location.href=res.url;
-          });
-          % }
-        }
-      });
-    }
-  };
-% end
-</html>
+
+<div id="uploader">
+<p>List of <%= $files->size %> uploaded files</p>
+% foreach (sort @$files) {
+  <%= link_to $_ => 'uploader' => {file => $_} %>
+  % if ($zone->{qrcodes} // 1) {
+  % my $url = Mojo::URL->new("https://api.qrserver.com/v1/create-qr-code/?size=150x150")->query([data => url_for('uploader' => {file => $_})->to_abs]);
+  <%= link_to $url => begin %><%= image '/qrcode.webp', (height=>16, width=>16) %><% end %>
+  % }
+  <%= link_to '🗑' => url_for('uploader' => {file => $_})->query(delete => 1) %>
+  <br />
+% }
+</div>

@@ -4,14 +4,19 @@
 </head>
 <body>
 <div id="dropper">
-% if ($downloader) {
-<%= link_to 'Downloader' => $downloader %><br />
+% foreach (sort keys %$zones) {
+% my $zone = $zones->{$_};
+% next unless grep { $_ eq $user } @{$zone->{login}};
+<h1><%= $_ %></h1>
+% if ($zone->{downloads} // 1) {
+<%= link_to Downloader => 'downloader' => {zonename => lc $_} %><br />
 % }
-% if ($paster) {
-<%= link_to 'Paster' => $paster %><br />
+% if ($zone->{uploads} // 1) {
+<%= link_to Uploader => 'uploader' => {zonename => lc $_} %><br />
 % }
-% if ($uploader) {
-<%= link_to 'Uploader' => $uploader %><br />
+% if ($zone->{pastes} // 1) {
+<%= link_to Pastes => 'paster' => {zonename => lc $_} %><br />
+% }
 % }
 </div>
 </body>

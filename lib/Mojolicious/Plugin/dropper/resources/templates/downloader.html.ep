@@ -1,19 +1,11 @@
-<html>
-<head>
-%= stylesheet '/style.css'
-</head>
-<body>
-<p><%= link_to 'Dropper' => 'dropper' %></p>
 <div id="downloader">
-<p>List of static files available for download</p>
-% foreach (file_index) {
-  <a href="/<%= url_for $_ %>"><%= $_ %></a>
-  % if ($qrcodes) {
-  % my $url = Mojo::URL->new("https://api.qrserver.com/v1/create-qr-code/?size=150x150")->query([data => url_for($_)->to_abs]);
+<p>List of <%= $files->size %> static files available for download</p>
+% foreach (sort @$files) {
+  <%= link_to $_ => 'downloader' => {file => $_} %>
+  % if ($zone->{qrcodes} // 1) {
+  % my $url = Mojo::URL->new("https://api.qrserver.com/v1/create-qr-code/?size=150x150")->query([data => url_for('downloader' => {file => $_})->to_abs]);
   <%= link_to $url => begin %><%= image '/qrcode.webp', (height=>16, width=>16) %><% end %>
   % }
   <br />
 % }
 </div>
-</body>
-</html>
