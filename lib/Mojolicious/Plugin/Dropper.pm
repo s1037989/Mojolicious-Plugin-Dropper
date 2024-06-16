@@ -57,6 +57,7 @@ sub register ($self, $app, $config) {
   my $zone = $dropper->under('/<zonename:zones>' => sub { $self->authz(shift) });
 
   $self->uploader($zone);
+  $self->linker($zone);
   $self->paster($zone);
   $self->downloader($zone);
 
@@ -145,11 +146,61 @@ sub downloader ($self, $r) {
       my $files = $path->list_tree
         ->map('to_rel', $zone->{path})
         ->grep(sub{$zone->{downloads} // 1 ? $_ : 0})
+        ->grep(sub{$zone->{links} // 1 ? $_->to_array->[0] ne 'links' : 1})
         ->grep(sub{$zone->{pastes} // 1 ? $_->to_array->[0] ne 'pastes' : 1})
         ->grep(sub{$zone->{uploads} // 1 ? $_->to_array->[0] ne 'uploads' : 1});
       $c->stash(files => $files, info => "$zonename serving requested directory listing for $path");
     }
   })->name('downloader');
+}
+
+sub linker ($self, $r) {
+  my $app = $self->app;
+
+  $r->get("/links/#file" => {file => ''})->to(cb => sub ($c) {
+    my $zonename = $c->stash('zonename');
+    my $zone = $c->stash('zone');
+    return $c->reply->not_found_msg("links disabled for $zonename") unless $zone->{links} // 1;
+    my $path = path($zone->{path}, 'links')->make_path;
+    if (my $file = $c->param('file')) {
+      $file = $path->child($file);
+      return $c->reply->not_found_msg("$zonename requested $file not found") unless -f $file;
+      if ($c->param('delete')) {
+        return $self->reject_authz($c) unless $c->stash('authz');
+        $c->stash(info => "$zonename deleting requested $file");
+	      $file->remove;
+      }
+      else {
+        $c->stash(info => "$zonename serving requested $file");
+        return $c->redirect_to($file->slurp);
+      }
+    }
+    return $self->reject_authz($c) unless $c->stash('authz');
+    my $files = $path->list_tree->map('to_rel', $zone->{path})->map('basename');
+    $c->stash(files => $files, info => "$zonename serving requested links listing for $path");
+  })->name('linker');
+  
+  $r->post("/link" => sub ($c) {
+    return $self->reject_authz($c) unless $c->stash('authz');
+    my $zonename = $c->stash('zonename');
+    my $zone = $c->stash('zone');
+    return $c->reply->not_found_msg("links disabled for $zonename") unless $zone->{links} // 1;
+    my $path = path($zone->{path}, 'links')->make_path;
+    if (my $link = $c->param('link')) {
+      my $save = tempfile(DIR => $path, UNLINK => 0)->spurt($link);
+      my $url = $c->url_for($save->to_rel($path->dirname))->to_abs;
+      $url = "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=$url" if $url;
+      $c->stash(
+        info => "$zonename link $save",
+      )->flash(
+        filename => $save->basename,
+        link => $link,
+      )->redirect_to('linker');
+    }
+    else {
+      $c->reply->json_not_found;
+    }
+  })->name('link');
 }
 
 sub paster ($self, $r) {
@@ -163,7 +214,15 @@ sub paster ($self, $r) {
     if (my $file = $c->param('file')) {
       $file = $path->child($file);
       return $c->reply->not_found_msg("$zonename requested $file not found") unless -f $file;
-      return $c->render(text => $file->slurp, info => "$zonename serving requested $file");
+      if ($c->param('delete')) {
+        return $self->reject_authz($c) unless $c->stash('authz');
+        $c->stash(info => "$zonename deleting requested $file");
+	      $file->remove;
+      }
+      else {
+        $c->stash(info => "$zonename serving requested $file");
+        return $c->render(text => $file->slurp, info => "$zonename serving requested $file");
+      }
     }
     return $self->reject_authz($c) unless $c->stash('authz');
     my $files = $path->list_tree->map('to_rel', $zone->{path})->map('basename');
@@ -204,12 +263,13 @@ sub uploader ($self, $r) {
     if (my $file = $c->param('file')) {
       $file = $path->child($file);
       return $c->reply->not_found_msg("$zonename requested $file not found") unless -f $file;
-      $c->stash(info => "$zonename serving requested $file");
       if ($c->param('delete')) {
         return $self->reject_authz($c) unless $c->stash('authz');
+        $c->stash(info => "$zonename deleting requested $file");
 	      $file->remove;
       }
       else {
+        $c->stash(info => "$zonename serving requested $file");
         return $c->reply->file($file);
       }
     }

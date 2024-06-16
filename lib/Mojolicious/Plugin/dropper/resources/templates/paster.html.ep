@@ -18,6 +18,7 @@
   % my $url = Mojo::URL->new("https://api.qrserver.com/v1/create-qr-code/?size=150x150")->query([data => url_for('paster' => {zonename => $zonename, file => $_})->to_abs]);
   <%= link_to $url => begin %><%= image '/qrcode.webp', (height=>16, width=>16) %><% end %>
   % }
+  <%= link_to '🗑' => url_for('paster' => {file => $_})->query(delete => 1) %>
   <br />
 % }
 </div>

@@ -1,9 +1,38 @@
 {
-  #login => 'username:password',
+  mount => '/',
   cleanup => 0,
-  paths => ['t'],
-  qrcodes => 1,
-  #default => '',
-  pastes  => '/tmp/9bI0JGeWz5',
-  uploads => '/tmp/W4jkIbmAp4',
+  login => ['user1:pass', 'user2:pass'],
+  defaultzone => 'zone1',
+  zones => {
+    zone1 => {
+      login => ['user1'],
+      path => '/root/zone1',
+      #default => '',
+      #qrcodes => 1,
+      #downloads => 0,
+      #pastes => 0,
+      #uploads => 0,
+    },
+    zone2 => {
+      login => ['user1', 'user2'],
+      path => '/root/zone2',
+      #default => '',
+      #qrcodes => 1,
+      #downloads => 0,
+      #pastes => 0,
+      #uploads => 0,
+    }
+  },
+  downloads => {
+    One => ['/root/downloads'],
+  },
+  links  => {
+    One => '/root/links',
+  },
+  pastes  => {
+    One => '/root/pastes',
+  },
+  uploads => {
+    One => '/root/uploads',
+  },
 }

@@ -14,6 +14,9 @@
 % if ($zone->{uploads} // 1) {
 <%= link_to Uploader => 'uploader' => {zonename => lc $_} %><br />
 % }
+% if ($zone->{links} // 1) {
+<%= link_to Links => 'linker' => {zonename => lc $_} %><br />
+% }
 % if ($zone->{pastes} // 1) {
 <%= link_to Pastes => 'paster' => {zonename => lc $_} %><br />
 % }

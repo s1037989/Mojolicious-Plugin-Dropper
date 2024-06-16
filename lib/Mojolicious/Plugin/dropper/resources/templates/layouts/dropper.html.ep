@@ -8,7 +8,7 @@
 
 <html>
   <head>
-    % my ($dropzone) = (current_route =~ /^(uploader|paster)$/);
+    % my ($dropzone) = (current_route =~ /^(uploader|linker|paster)$/);
     % if ($dropzone) {
     %= stylesheet '/dropzone.min.css'
     % }
@@ -24,6 +24,7 @@
     <h1><%= $zonename %></h1>
     <%= $link_to->(Downloader => 'downloader') %>
     <%= $link_to->(Uploader => 'uploader') %>
+    <%= $link_to->(Linker => 'linker') %>
     <%= $link_to->(Paster => 'paster') %>
     % }
     <br />
