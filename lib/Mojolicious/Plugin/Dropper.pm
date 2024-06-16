@@ -172,7 +172,8 @@ sub linker ($self, $r) {
       }
       else {
         $c->stash(info => "$zonename serving requested $file");
-        return $c->redirect_to($file->slurp);
+        my ($desc, $link) = split /\n/, $file->slurp;
+        return $c->redirect_to($link);
       }
     }
     return $self->reject_authz($c) unless $c->stash('authz');
@@ -187,7 +188,8 @@ sub linker ($self, $r) {
     return $c->reply->not_found_msg("links disabled for $zonename") unless $zone->{links} // 1;
     my $path = path($zone->{path}, 'links')->make_path;
     if (my $link = $c->param('link')) {
-      my $save = tempfile(DIR => $path, UNLINK => 0)->spurt($link);
+      my $desc = $c->param('desc') || 'no desc';
+      my $save = tempfile(DIR => $path, UNLINK => 0)->spurt(join "\n", $desc, $link);
       my $url = $c->url_for($save->to_rel($path->dirname))->to_abs;
       $url = "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=$url" if $url;
       $c->stash(
@@ -195,6 +197,7 @@ sub linker ($self, $r) {
       )->flash(
         filename => $save->basename,
         link => $link,
+        desc => $desc,
       )->redirect_to('linker');
     }
     else {

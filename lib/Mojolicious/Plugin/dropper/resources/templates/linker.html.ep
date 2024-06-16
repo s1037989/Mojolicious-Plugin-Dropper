@@ -1,12 +1,18 @@
 %= form_for 'link' => (method => 'POST') => begin
 % my $filename = flash 'filename';
 % my $link = flash 'link';
+% my $desc = flash 'desc';
 % if ($filename && $link) {
-<h2>Added <%= link_to $filename => 'linker' => {zonename => $zonename, file => $filename} %> to <%= $link %></h2>
+<h2>Added <%= $desc %> (<%= link_to $filename => 'linker' => {zonename => $zonename, file => $filename} %>) to <%= $link %></h2>
 % }
 <div>
   <div>
+    %= label_for 'link' => 'Link'
     %= text_field 'link'
+    <br />
+    %= label_for 'desc' => 'Desc'
+    %= text_field 'desc'
+    <br />
     %= submit_button
   </div>
 </div>
@@ -16,7 +22,7 @@
 <p>List of <%= $files->size %> links</p>
 % foreach (sort @$files) {
   <%= link_to $_ => 'linker' => {zonename => $zonename, file => $_} %>
-  <%= Mojo::File::path($zone->{path}, 'links', $_)->slurp %>
+  <%= link_to split /\n/, Mojo::File::path($zone->{path}, 'links', $_)->slurp %>
   % if ($zone->{qrcodes} // 1) {
   % my $url = Mojo::URL->new("https://api.qrserver.com/v1/create-qr-code/?size=150x150")->query([data => url_for('linker' => {zonename => $zonename, file => $_})->to_abs]);
   <%= link_to $url => begin %><%= image '/qrcode.webp', (height=>16, width=>16) %><% end %>
