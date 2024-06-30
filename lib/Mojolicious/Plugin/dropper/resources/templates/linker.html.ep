@@ -20,14 +20,17 @@
 
 <div id="linker">
 <p>List of <%= $files->size %> links</p>
-% foreach (sort @$files) {
-  <%= link_to $_ => 'linker' => {zonename => $zonename, file => $_} %>
-  <%= link_to split /\n/, Mojo::File::path($zone->{path}, 'links', $_)->slurp %>
+<table>
+% foreach (sort { Mojo::File::path($zone->{path}, 'links', $a)->slurp cmp Mojo::File::path($zone->{path}, 'links', $b)->slurp } @$files) {
+  <tr>
+  <td width=200><%= link_to $_ => 'linker' => {zonename => $zonename, file => $_} %></td>
+  <td><%= link_to split /\n/, Mojo::File::path($zone->{path}, 'links', $_)->slurp %></td>
   % if ($zone->{qrcodes} // 1) {
   % my $url = Mojo::URL->new("https://api.qrserver.com/v1/create-qr-code/?size=150x150")->query([data => url_for('linker' => {zonename => $zonename, file => $_})->to_abs]);
-  <%= link_to $url => begin %><%= image '/qrcode.webp', (height=>16, width=>16) %><% end %>
+  <td><%= link_to $url => begin %><%= image '/qrcode.webp', (height=>16, width=>16) %><% end %></td>
   % }
-  <%= link_to '🗑' => url_for('linker' => {file => $_})->query(delete => 1) %>
-  <br />
+  <td><%= link_to '🗑' => url_for('linker' => {file => $_})->query(delete => 1) %></td>
+  </tr>
 % }
+</table>
 </div>
