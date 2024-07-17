@@ -181,7 +181,8 @@ sub linker ($self, $r) {
       if ($c->param('delete')) {
         return $self->reject_authz($c) unless $c->stash('authz');
         $c->stash(info => "$zonename deleting requested $file");
-	      $file->remove;
+        $file->remove;
+	return $c->redirect_to('linker', file => undef);
       }
       else {
         $c->stash(info => "$zonename serving requested $file");
@@ -233,7 +234,8 @@ sub paster ($self, $r) {
       if ($c->param('delete')) {
         return $self->reject_authz($c) unless $c->stash('authz');
         $c->stash(info => "$zonename deleting requested $file");
-	      $file->remove;
+        $file->remove;
+	return $c->redirect_to('paster', file => undef);
       }
       else {
         $c->stash(info => "$zonename serving requested $file");
@@ -282,7 +284,8 @@ sub uploader ($self, $r) {
       if ($c->param('delete')) {
         return $self->reject_authz($c) unless $c->stash('authz');
         $c->stash(info => "$zonename deleting requested $file");
-	      $file->remove;
+        $file->remove;
+	return $c->redirect_to('uploader', file => undef);
       }
       else {
         $c->stash(info => "$zonename serving requested $file");

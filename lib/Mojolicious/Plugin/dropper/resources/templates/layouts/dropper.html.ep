@@ -17,7 +17,6 @@
     %= javascript '/dropzone.min.js'
     % }
     %= javascript begin
-      console.log("Dropzone");
       Dropzone.options.demoUpload = {
       // Configuration options go here
         maxFilesize: 250000000,
