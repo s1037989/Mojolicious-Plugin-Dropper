@@ -16,6 +16,28 @@
     % if ($dropzone) {
     %= javascript '/dropzone.min.js'
     % }
+    %= javascript begin
+      console.log("Dropzone");
+      Dropzone.options.demoUpload = {
+      // Configuration options go here
+        maxFilesize: 250000000,
+        timeout: 3600000
+        //init: function() {
+        //  this.on("addedfile", file => {
+        //    console.log("A file has been added");
+        //  });
+        //  this.on("error", file => {
+        //    console.log("A file has been error");
+        //  });
+        //  this.on("processing", file => {
+        //    console.log("A file has been processed");
+        //  });
+        //  this.on("sending", file => {
+        //    console.log("A file has been sending");
+        //  });
+        //}
+      };
+    % end
     %= content 'head'
   </head>
   <body>

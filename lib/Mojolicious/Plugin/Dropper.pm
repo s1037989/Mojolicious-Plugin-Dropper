@@ -18,6 +18,8 @@ has cleanup => 1;
 sub register ($self, $app, $config) {
   $self->app($app);
 
+  $app->max_request_size(1073741824);
+
   # Log requests for static files
   $app->hook(after_static => sub ($c) {
     $c->log->info(sprintf 'GET %s', $c->req->url->path);
@@ -35,6 +37,17 @@ sub register ($self, $app, $config) {
     if (my $info = $c->stash('info')) {
       $c->log->info($info);
     }
+  });
+
+  $app->hook(after_build_tx => sub ($tx, $app) {
+    $tx->req->on(progress => sub ($msg) {
+      return unless my $len = $msg->headers->content_length;
+      my $size = $msg->content->progress;
+      warn 'Progress: ', $size == $len ? 100 : int($size / ($len / 100)), '%';
+    });
+    $tx->req->on(finish => sub ($msg) {
+      warn sprintf "Finished: %s", $_->filename for @{$tx->req->uploads};
+    });
   });
 
   $app->helper('reply.not_found_msg' => sub ($c, $msg) {
@@ -282,15 +295,19 @@ sub uploader ($self, $r) {
   })->name('uploader');
   
   $r->post("/upload" => sub ($c) {
+    $c->inactivity_timeout(3000);
     return $self->reject_authz($c) unless $c->stash('authz');
     my $zonename = $c->stash('zonename');
     my $zone = $c->stash('zone');
     return $c->reply->not_found_msg("uploads disabled for $zonename") unless $zone->{uploads} // 1;
+    return $c->reply->not_found_msg(text => 'File is too big.', status => 200) if $c->req->is_limit_exceeded;
     my $path = path($zone->{path}, 'uploads')->make_path;
     if (my $file = $c->req->upload('file')) {
-      my $save = $file->move_to($path->child($file->filename));
+      $c->log->debug("Uploading file $file");
+      my $save = $file->asset->to_file->move_to($path->child($file->filename))->path;
       my $url = $c->url_for($save->to_rel($path->dirname))->to_abs;
       $url = "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=$url" if $url;
+      $c->log->info("$zonename upload $save");
       $c->render(
         info => "$zonename upload $save",
         json => {ok => 1, url => $url, filename => $save->basename, size => $save->stat->size},
