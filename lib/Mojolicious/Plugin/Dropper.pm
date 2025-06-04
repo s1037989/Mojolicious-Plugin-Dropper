@@ -8,17 +8,14 @@ use Mojo::File qw(curfile path tempdir tempfile);
 use File::Basename qw(dirname);
 use List::MoreUtils qw(uniq);
 
-# Since this is generally a temporary execution to easily setup a file
-# transfer, allow extremely large files;
-use constant MAX_SIZE => $ENV{DROPPER_MAXSIZE} || 10_000_000_000;
+# To disable upload limit, set MOJO_MAX_MESSAGE_SIZE=0
+# Be sure to do this on the reverse proxy, too!
 
 has 'app';
 has cleanup => 1;
 
 sub register ($self, $app, $config) {
   $self->app($app);
-
-  $app->max_request_size(1073741824);
 
   # Log requests for static files
   $app->hook(after_static => sub ($c) {
@@ -58,8 +55,6 @@ sub register ($self, $app, $config) {
 
   $self->static_paths(static => curfile->sibling->child('dropper', 'resources', 'public'));
   $self->static_paths(renderer => curfile->sibling->child('dropper', 'resources', 'templates'));
-
-  $app->max_request_size(MAX_SIZE);
 
   my $r = $app->routes;
   $r->add_type(zones => [keys %{$app->config->{zones}}]);
@@ -303,14 +298,14 @@ sub uploader ($self, $r) {
     my $zonename = $c->stash('zonename');
     my $zone = $c->stash('zone');
     return $c->reply->not_found_msg("uploads disabled for $zonename") unless $zone->{uploads} // 1;
-    return $c->reply->not_found_msg(text => 'File is too big.', status => 200) if $c->req->is_limit_exceeded;
+    return $c->reply->not_found_msg('File is too big') if $c->req->is_limit_exceeded;
     my $path = path($zone->{path}, 'uploads')->make_path;
     if (my $file = $c->req->upload('file')) {
-      $c->log->debug("Uploading file $file");
+      $c->log->debug(sprintf "Uploading file %s", $file->filename);
       my $save = $file->asset->to_file->move_to($path->child($file->filename))->path;
       my $url = $c->url_for($save->to_rel($path->dirname))->to_abs;
       $url = "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=$url" if $url;
-      $c->log->info("$zonename upload $save");
+      $c->log->info(sprintf "$zonename upload $save (%s bytes)", $save->stat->size);
       $c->render(
         info => "$zonename upload $save",
         json => {ok => 1, url => $url, filename => $save->basename, size => $save->stat->size},
